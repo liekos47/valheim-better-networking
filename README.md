@@ -1,9 +1,11 @@
-# Better Networking 2.3.4 (Valheim 1.0.7)
+# Better Networking 2.3.4 (Valheim 1.0.x)
 
 An unofficial rebuild of [Better Networking](https://github.com/CW-Jesse/valheim-betternetworking)
-by [CW_Jesse](https://github.com/CW-Jesse), updated to run on **Valheim 1.0.7** (network
-version 39). All credit for the mod goes to CW_Jesse and its contributors; this repository
-only carries the changes needed to keep it working on the current game version.
+by [CW_Jesse](https://github.com/CW-Jesse), updated to run on **Valheim 1.0** (network
+version 39). Built against the `l-1.0.7` assemblies, and it has since run unmodified
+through an auto-update to `l-1.0.12`. All credit for the mod goes to CW_Jesse and its
+contributors; this repository only carries the changes needed to keep it working on the
+current game version.
 
 No official build claims 1.0 support: upstream 2.3.2 targets 0.217.28, and the 2.3.3 fork
 targets 0.221.4.
@@ -16,24 +18,78 @@ actually is. The mod raises the send queue (10 KB to 32 KB) and Steam's send rat
 (150 KB/s to a 256 KB/s minimum and 1024 KB/s maximum), and adds zstd compression between
 machines that both run it.
 
-Measured on a dedicated server, server-to-player throughput with players clustered:
+## Measured results
 
-| Condition | p50 | p90 | max |
+From one live server between 2026-09-11 and 2026-09-13: 10 distinct players on home
+connections, crossplay off, direct Steam sockets. Traffic was captured with `tcpdump` on
+the server and binned per player per second; figures are p50 / p90 / max of those
+one-second bins, per player, one direction.
+
+**Only compare captures taken with players clustered together.** Valheim only sends a
+player what is near them, so a scattered group produces about 1 KB/s each in vanilla too.
+Mixing the two states makes the mod look broken when it is not.
+
+### The problem: vanilla clamps every player at one number
+
+Server to each player, no mod, clustered:
+
+| Hardware | Players | p50 | p90 | max |
+|---|---|---|---|---|
+| i7-9700 | 7 | 37-42 | 43-44 | 43-45 KB/s |
+| i9-9900K | 5 | 62-63 | 63-64 | 64-80 KB/s |
+
+Several players stopping dead at the same number is a cap, not demand. Neither machine was
+short of anything: CPU 15-30% of one core, 1.5 GB resident, and the uplink peaked at
+4.7 Mbit/s on a line proven to carry 121 Mbit/s.
+
+### With the mod on the server
+
+Same measurement, one figure per player in the capture (i7-9700):
+
+| Players | p50 | p90 | max |
 |---|---|---|---|
-| Before, 5 players | 62-63 KB/s | 63-64 KB/s | 64-80 KB/s |
-| After, 4 players | 103-126 KB/s | 127-141 KB/s | 147-180 KB/s |
-| After, 8 players | 5-65 KB/s | 29-90 KB/s | 51-135 KB/s |
+| 4 | 34, 103, 109, 126 | 50, 127, 133, 141 | 54, 147, 172, 180 KB/s |
+| 6 | 12-58 | 25-94 | 53-150 KB/s |
+| 8 | 5-65 | 29-90 | 51-135 KB/s |
 
 Roughly twice the sustained rate and three times the peak, and the flat clamp is gone:
-rates now vary with what is happening instead of stopping at one number.
+rates now move with what is happening instead of stopping at one number. Totals through the
+server were 705 KB/s in and 281 KB/s out at 8 players, about 2.2 Mbit/s of upload.
 
-**When measuring, only compare captures taken with players clustered together.** Spread-out
-players make server-to-player traffic collapse to about 1 KB/s each in vanilla too, because
-the server only relays what is near you. A capture taken while everyone is scattered looks
-like the mod broke the send path when nothing is wrong.
+Server load did not change meaningfully. Valheim's main thread, the one that saturates
+first, sat at 29% of one core with 8 players (35% max) against 8% idle, and memory went
+from 1.52 GB to 1.76 GB.
 
-Compression only works where both ends run the mod, so installing it on players as well as
-the server helps more than the server alone.
+### What limits it next: unmodded clients
+
+With 7-8 players on, the server peaked at 132-136 KB/s per player against a queue allowing
+roughly 640 KB/s, so the server had stopped being the constraint. The vanilla clients had
+not: each sat at 113-138 KB/s, which is vanilla's 150 KB/s send rate once overhead is
+counted. Valheim has the client nearest an area simulate it, so in a group fight one player
+uploads every monster's state for everyone and hits that cap. This is why fights can still
+lag after a server-side fix.
+
+With the mod on one client and seven still vanilla, on the same server and session:
+
+| Connection | To server | From server |
+|---|---|---|
+| Modded client | 26-29 KB/s | 15-44 KB/s |
+| The 7 vanilla clients | 37-127 KB/s | 2-118 KB/s |
+
+The modded client moved its traffic in roughly a third of the bytes. Compression only
+engages between machines that both run the mod, so the benefit grows with each player who
+installs it.
+
+### Stability over the first 48 hours
+
+| | |
+|---|---|
+| Player sessions | 46 joins by 10 distinct players, 9 concurrent at peak |
+| Session length | 65 minutes median, 298 minutes longest |
+| Connections | every join succeeded; all disconnects were `ClosedByPeer`, i.e. players quitting |
+| Errors | zero exceptions naming the mod or Harmony, across every restart |
+| Game update | ran through `l-1.0.7` to `l-1.0.12` with no rebuild |
+| Host reboot | reloaded clean |
 
 ## What changed in 2.3.4
 
@@ -61,6 +117,17 @@ the server helps more than the server alone.
 
 The DLL is self-contained: ZstdSharp and the compression dictionary are embedded. To
 uninstall, delete that one file.
+
+It works on the game client as well as a dedicated server. On a client, `LogOutput.log`
+confirms it loaded and that compression negotiated with the server:
+
+```
+[Info   :   BepInEx] Loading [Better Networking 2.3.4]
+[Message:Better Networking] Steamworks: k_ESteamNetworkingConfig_SendRateMin: 153600 -> 262144
+[Message:Better Networking] Steamworks: k_ESteamNetworkingConfig_SendRateMax: 153600 -> 1048576
+[Message:Better Networking] Compression: Compression to [server]: True
+[Message:Better Networking] Compression: Compression from [server]: True
+```
 
 Defaults are queue 32 KB, send rate 256 KB/s minimum and 1024 KB/s maximum, compression on.
 Config lives at `BepInEx/config/CW_Jesse.BetterNetworking.cfg`.
@@ -92,7 +159,9 @@ match the release checksum.
 ### After a Valheim update
 
 Valheim servers update themselves, and any update can break a mod that patches game
-internals. Before trusting a rebuild, run HookCheck against the new assemblies:
+internals. Not every update does: this build carried on through `l-1.0.7` to `l-1.0.12`
+untouched, because nothing it patches changed. Check rather than assume — run HookCheck
+against the new assemblies:
 
 ```bash
 dotnet run --project tools/HookCheck -- path/to/assembly_valheim.dll path/to/com.rlabrecque.steamworks.net.dll
