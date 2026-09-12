@@ -1,0 +1,9 @@
+{
+    "name": "BetterNetworking_Valheim",
+    "version_number": "2.3.4",
+    "website_url": "https://github.com/CW-Jesse/valheim-betternetworking",
+    "description": "Unofficial private rebuild for Valheim 1.0.7. Improve multiplayer performance using compression, queue size, send rate, and other features.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2333"
+    ]
+}
