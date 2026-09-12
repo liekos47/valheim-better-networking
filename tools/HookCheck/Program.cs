@@ -40,6 +40,22 @@ if (args.Length > 3 && args[2] == "--check") {
     return;
 }
 
+// Optional: HookCheck <valheim.dll> <steam.dll> --fieldrefs Field [Field ...]
+// Lists every method that loads a field, e.g. m_localPlayer - which is null on a dedicated
+// server, so any owner-side method touching it breaks under serverside-simulation mods.
+if (args.Length > 3 && args[2] == "--fieldrefs") {
+    foreach (var f in args.Skip(3)) valheim.PrintFieldUsers(f);
+    return;
+}
+
+// Optional: HookCheck <valheim.dll> <steam.dll> --pattern Field Method
+// Lists every method where a load of Field is immediately followed by a call to Method,
+// e.g. "m_localPlayer GetZDOID" - Player.m_localPlayer.GetZDOID(), which throws on a server.
+if (args.Length > 4 && args[2] == "--pattern") {
+    valheim.PrintPattern(args[3], args[4]);
+    return;
+}
+
 // Optional: HookCheck <valheim.dll> <steam.dll> --dump Type [Type ...]
 // Lists every method and field of a type, for working out what replaced a member that moved.
 if (args.Length > 3 && args[2] == "--dump") {
@@ -134,6 +150,33 @@ sealed class Asm {
         var access = (def.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Public ? "public" : "nonpublic";
         var stat = def.Attributes.HasFlag(MethodAttributes.Static) ? " static" : "";
         return $"({string.Join(", ", ps)}) -> {sig.ReturnType}  [{access}{stat}]";
+    }
+
+    // Every method whose IL loads the named field (match on the field name, e.g. "m_localPlayer").
+    public void PrintFieldUsers(string fieldName) {
+        Console.WriteLine($"-- methods that load {fieldName}");
+        foreach (var mh in md.MethodDefinitions) {
+            var il = Decode(mh);
+            if (!il.Any(x => x.op.Name.StartsWith("ld") && x.op.Name.Contains("fld")
+                          && x.arg is string s && s.EndsWith("::" + fieldName))) continue;
+            var d = md.GetMethodDefinition(mh);
+            Console.WriteLine($"   {FullName(d.GetDeclaringType())}::{md.GetString(d.Name)}");
+        }
+    }
+
+    // Methods where "ld*fld ...::field" is immediately followed by "call/callvirt ...::method".
+    public void PrintPattern(string field, string method) {
+        Console.WriteLine($"-- methods with {field} immediately followed by {method}()");
+        foreach (var mh in md.MethodDefinitions) {
+            var il = Decode(mh);
+            bool hit = false;
+            for (int i = 0; i + 1 < il.Count && !hit; i++)
+                hit = il[i].op.Name.Contains("fld") && il[i].arg is string f && f.EndsWith("::" + field)
+                   && il[i + 1].op.Name.StartsWith("call") && il[i + 1].arg is string m && m.EndsWith("::" + method);
+            if (!hit) continue;
+            var d = md.GetMethodDefinition(mh);
+            Console.WriteLine($"   {FullName(d.GetDeclaringType())}::{md.GetString(d.Name)}");
+        }
     }
 
     public void DumpType(string typeName) {

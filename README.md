@@ -176,10 +176,16 @@ Three extra modes, useful for any mod that patches game internals, not just this
 --il Type.Method              # dump a method's IL
 --check hooks.txt             # check a list of members: "Type.Method" or "field:Type.m_field"
 --dump Type                   # list every method and field of a type
+--fieldrefs m_localPlayer     # every method that loads a field
+--pattern m_localPlayer GetZDOID   # every method where that field load is followed by that call
 ```
 
 `--check` exits non-zero if anything is missing, so it works in a build script. `--dump` is
-for working out what replaced a member that moved.
+for working out what replaced a member that moved. `--fieldrefs` and `--pattern` find code
+that assumes a client: `Player.m_localPlayer` is null on a dedicated server, so any
+owner-side method that dereferences it breaks under a serverside-simulation mod. That is how
+the `Pickable.RPC_Pick` crash in Valheim 1.0 was found, and the pattern scan turned up five
+more methods with the same fault.
 
 The `l-1.0.7` to `l-1.0.12` update is the worked example. All 59 hooked members were
 present, no signature changed, and the IL the transpilers read was identical except for
