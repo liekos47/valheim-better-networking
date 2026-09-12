@@ -85,6 +85,8 @@ libs-Valheim*/
 # Packaged builds
 dist/
 
-# Notes and docs stay local
-*.md
+# Notes stay local; README.md and CHANGELOG.md are the only docs that ship
+HANDOVER.md
+NOTES.md
+*-notes.md
 
