@@ -1,11 +1,11 @@
 # Better Networking 2.3.4 (Valheim 1.0.x)
 
 An unofficial rebuild of [Better Networking](https://github.com/CW-Jesse/valheim-betternetworking)
-by [CW_Jesse](https://github.com/CW-Jesse), updated to run on **Valheim 1.0** (network
-version 39). Built against the `l-1.0.7` assemblies, and it has since run unmodified
-through an auto-update to `l-1.0.12`. All credit for the mod goes to CW_Jesse and its
-contributors; this repository only carries the changes needed to keep it working on the
-current game version.
+by [CW_Jesse](https://github.com/CW-Jesse), updated to run on **Valheim 1.0**. Built
+against the `l-1.0.7` assemblies (network version 39) and verified against `l-1.0.12`
+(network version 40), which it has run on unmodified since that auto-update. All credit
+for the mod goes to CW_Jesse and its contributors; this repository only carries the
+changes needed to keep it working on the current game version.
 
 No official build claims 1.0 support: upstream 2.3.2 targets 0.217.28, and the 2.3.3 fork
 targets 0.221.4.
@@ -159,9 +159,8 @@ match the release checksum.
 ### After a Valheim update
 
 Valheim servers update themselves, and any update can break a mod that patches game
-internals. Not every update does: this build carried on through `l-1.0.7` to `l-1.0.12`
-untouched, because nothing it patches changed. Check rather than assume — run HookCheck
-against the new assemblies:
+internals. Not every update does, and HookCheck is how you tell the difference rather than
+guessing. Run it against the new assemblies:
 
 ```bash
 dotnet run --project tools/HookCheck -- path/to/assembly_valheim.dll path/to/com.rlabrecque.steamworks.net.dll
@@ -171,6 +170,11 @@ It lists every hooked method, constructor and field with its signature, plus the
 constants the patches depend on. Add `--il Type.Method` to dump a method's IL. Diff the
 output against the previous version: anything reported `MISSING` means do not ship. If a
 hook is missing, pull the DLL until it is fixed.
+
+The `l-1.0.7` to `l-1.0.12` update is the worked example. All 59 hooked members were
+present, no signature changed, and the IL the transpilers read was identical except for
+the network version constant going from 39 to 40 — which the mod does not touch. Hence no
+rebuild, and the same DLL kept running.
 
 Mixed mod versions are safe: two machines that disagree simply skip compression between
 them. Do not run another networking mod alongside this one; they conflict.
