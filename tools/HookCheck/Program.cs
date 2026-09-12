@@ -17,6 +17,36 @@ if (args.Length > 2 && args[2] == "--il") {
     return;
 }
 
+// Optional: HookCheck <valheim.dll> <steam.dll> --check <specfile>
+// One spec per line: "Type.Method", "Type..ctor", or "field:Type.m_field". # starts a comment.
+// Use it to check any mod's hooks, not just this one's.
+if (args.Length > 3 && args[2] == "--check") {
+    int missing = 0;
+    foreach (var line in File.ReadAllLines(args[3])) {
+        var spec = line.Split('#')[0].Trim();
+        if (spec.Length == 0) continue;
+        if (spec.StartsWith("steam:")) { steam.PrintMethods(spec[6..]); continue; }
+        var before = Console.Out;
+        var buf = new StringWriter();
+        Console.SetOut(buf);
+        if (spec.StartsWith("field:")) valheim.PrintField(spec[6..]); else valheim.PrintMethods(spec);
+        Console.SetOut(before);
+        var text = buf.ToString();
+        if (text.Contains("MISSING")) missing++;
+        Console.Write(text);
+    }
+    Console.WriteLine($"\n{missing} missing");
+    Environment.ExitCode = missing == 0 ? 0 : 1;
+    return;
+}
+
+// Optional: HookCheck <valheim.dll> <steam.dll> --dump Type [Type ...]
+// Lists every method and field of a type, for working out what replaced a member that moved.
+if (args.Length > 3 && args[2] == "--dump") {
+    foreach (var t in args.Skip(3)) valheim.DumpType(t);
+    return;
+}
+
 Console.WriteLine("== Hook targets (method: signature) ==");
 string[] methods = {
     "ZNet.IsDedicated", "ZNet.RPC_PeerInfo", "ZNet.OnNewConnection", "ZNet.Shutdown", "ZNet.Disconnect",
@@ -104,6 +134,18 @@ sealed class Asm {
         var access = (def.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Public ? "public" : "nonpublic";
         var stat = def.Attributes.HasFlag(MethodAttributes.Static) ? " static" : "";
         return $"({string.Join(", ", ps)}) -> {sig.ReturnType}  [{access}{stat}]";
+    }
+
+    public void DumpType(string typeName) {
+        Console.WriteLine($"== {typeName} ==");
+        if (!types.TryGetValue(typeName, out var th)) { Console.WriteLine("MISSING TYPE"); return; }
+        var td = md.GetTypeDefinition(th);
+        foreach (var fh in td.GetFields()) {
+            var fd = md.GetFieldDefinition(fh);
+            Console.WriteLine($"  field  {md.GetString(fd.Name)} : {fd.DecodeSignature(new Names(md), null)}");
+        }
+        foreach (var mh in td.GetMethods())
+            Console.WriteLine($"  method {md.GetString(md.GetMethodDefinition(mh).Name)}{Signature(mh)}");
     }
 
     public void PrintField(string spec) {

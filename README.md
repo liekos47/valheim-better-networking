@@ -167,9 +167,19 @@ dotnet run --project tools/HookCheck -- path/to/assembly_valheim.dll path/to/com
 ```
 
 It lists every hooked method, constructor and field with its signature, plus the IL
-constants the patches depend on. Add `--il Type.Method` to dump a method's IL. Diff the
-output against the previous version: anything reported `MISSING` means do not ship. If a
-hook is missing, pull the DLL until it is fixed.
+constants the patches depend on. Diff the output against the previous version: anything
+reported `MISSING` means do not ship. If a hook is missing, pull the DLL until it is fixed.
+
+Three extra modes, useful for any mod that patches game internals, not just this one:
+
+```bash
+--il Type.Method              # dump a method's IL
+--check hooks.txt             # check a list of members: "Type.Method" or "field:Type.m_field"
+--dump Type                   # list every method and field of a type
+```
+
+`--check` exits non-zero if anything is missing, so it works in a build script. `--dump` is
+for working out what replaced a member that moved.
 
 The `l-1.0.7` to `l-1.0.12` update is the worked example. All 59 hooked members were
 present, no signature changed, and the IL the transpilers read was identical except for
