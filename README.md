@@ -180,6 +180,8 @@ Three extra modes, useful for any mod that patches game internals, not just this
 --pattern m_localPlayer GetZDOID   # every method where that field load is followed by that call
 --findhash 327122920          # which string literal has this StableHashCode (decode "Failed to find rpc method N")
 --strrefs discovered          # who uses a string literal, and the call after it (who registers vs invokes an RPC)
+--callers IncrementPlayerStat # every method that calls a method of that name
+--rpcsigs                     # every RPC_* handler with its signature (match a deserialisation error to its handler)
 ```
 
 `--check` exits non-zero if anything is missing, so it works in a build script. `--dump` is

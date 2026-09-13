@@ -72,6 +72,21 @@ if (args.Length > 3 && args[2] == "--strrefs") {
     return;
 }
 
+// Optional: HookCheck <valheim.dll> <steam.dll> --callers Method [Method ...]
+// Lists every method that calls a method of that name, with the int constants it loads.
+if (args.Length > 3 && args[2] == "--callers") {
+    foreach (var m in args.Skip(3)) valheim.PrintCallers(m);
+    return;
+}
+
+// Optional: HookCheck <valheim.dll> <steam.dll> --rpcsigs
+// Lists every RPC handler (methods named RPC_*) with its signature, to match a deserialisation
+// error ("expected a bool after one value") to the handlers that could have thrown it.
+if (args.Length > 2 && args[2] == "--rpcsigs") {
+    valheim.PrintRpcSignatures();
+    return;
+}
+
 // Optional: HookCheck <valheim.dll> <steam.dll> --dump Type [Type ...]
 // Lists every method and field of a type, for working out what replaced a member that moved.
 if (args.Length > 3 && args[2] == "--dump") {
@@ -235,6 +250,16 @@ sealed class Asm {
                 var d = md.GetMethodDefinition(mh);
                 Console.WriteLine($"   {FullName(d.GetDeclaringType())}::{md.GetString(d.Name)}  ->  {next}");
             }
+        }
+    }
+
+    public void PrintRpcSignatures() {
+        Console.WriteLine("-- RPC handlers (Type.RPC_Name(params) -> return)");
+        foreach (var mh in md.MethodDefinitions) {
+            var d = md.GetMethodDefinition(mh);
+            string name = md.GetString(d.Name);
+            if (!name.StartsWith("RPC_")) continue;
+            Console.WriteLine($"   {FullName(d.GetDeclaringType())}.{name}{Signature(mh)}");
         }
     }
 
