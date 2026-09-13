@@ -80,6 +80,30 @@ The modded client moved its traffic in roughly a third of the bytes. Compression
 engages between machines that both run the mod, so the benefit grows with each player who
 installs it.
 
+### With the mod on every client
+
+Two days later every player had it. One evening, eight distinct players, up to eight on at
+once, all eight negotiating compression with the server in both directions:
+
+| | |
+|---|---|
+| Server main thread | 26% of one core, averaged over 232 minutes |
+| Exceptions | 0 |
+| Warnings | 0 |
+| Disconnects | 15, all players quitting normally |
+
+The server is no longer part of the lag equation at that point. What remains is the
+connection of whichever client owns the area a fight happens in, and with the mod on that
+client too, its send rate is 256 KB/s to 1 MB/s instead of vanilla's 150 KB/s, compressed.
+
+For comparison, the same weekend we also trialled a server-side simulation mod, which
+moves monster and physics simulation off the clients onto the server. It removes the
+area-owner problem entirely, but on an i7-9700 it ran the server's single main thread at
+70-86% with six to eight players and saturated it in dungeons (about 120 simulated
+creatures is where that CPU crosses the 30 fps budget). Better Networking on every client
+gave the calmer result on this hardware; the simulation approach only makes sense with a
+much faster single core or fewer players.
+
 ### Stability over the first 48 hours
 
 | | |
