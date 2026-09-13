@@ -56,6 +56,22 @@ if (args.Length > 4 && args[2] == "--pattern") {
     return;
 }
 
+// Optional: HookCheck <valheim.dll> <steam.dll> --findhash <int>
+// Prints every string literal in the assembly whose Valheim StableHashCode equals the number,
+// e.g. to decode "Failed to find rpc method 327122920" in a server log.
+if (args.Length > 3 && args[2] == "--findhash" && int.TryParse(args[3], out int wantedHash)) {
+    valheim.FindStringsByHash(wantedHash);
+    return;
+}
+
+// Optional: HookCheck <valheim.dll> <steam.dll> --strrefs <literal>
+// Lists every method whose IL loads that exact string literal, e.g. an RPC name, with the
+// call that follows it - which tells you who registers an RPC and who invokes it.
+if (args.Length > 3 && args[2] == "--strrefs") {
+    valheim.PrintStringUsers(args[3]);
+    return;
+}
+
 // Optional: HookCheck <valheim.dll> <steam.dll> --dump Type [Type ...]
 // Lists every method and field of a type, for working out what replaced a member that moved.
 if (args.Length > 3 && args[2] == "--dump") {
@@ -176,6 +192,49 @@ sealed class Asm {
             if (!hit) continue;
             var d = md.GetMethodDefinition(mh);
             Console.WriteLine($"   {FullName(d.GetDeclaringType())}::{md.GetString(d.Name)}");
+        }
+    }
+
+    // Valheim's StringExtensionMethods.GetStableHashCode, used for RPC names and prefab ids.
+    public static int StableHash(string s) {
+        unchecked {
+            int a = 5381, b = 5381;
+            for (int i = 0; i < s.Length; i += 2) {
+                a = ((a << 5) + a) ^ s[i];
+                if (i == s.Length - 1) break;
+                b = ((b << 5) + b) ^ s[i + 1];
+            }
+            return a + b * 1566083941;
+        }
+    }
+
+    // Walks the user-string heap (every string literal in the assembly) looking for a hash.
+    public void FindStringsByHash(int wanted) {
+        Console.WriteLine($"-- string literals with StableHashCode {wanted}");
+        int found = 0;
+        var h = MetadataTokens.UserStringHandle(1);
+        while (!h.IsNil) {
+            string s = md.GetUserString(h);
+            if (s.Length > 0 && StableHash(s) == wanted) { Console.WriteLine($"   \"{s}\""); found++; }
+            h = md.GetNextHandle(h);
+        }
+        if (found == 0) Console.WriteLine("   (none - the name is not a literal in this assembly; a mod or a computed string)");
+    }
+
+    // Methods that load the literal, plus the next call after each load (Register vs InvokeRPC etc).
+    public void PrintStringUsers(string literal) {
+        string quoted = "\"" + literal + "\"";
+        Console.WriteLine($"-- methods that use the string {quoted}");
+        foreach (var mh in md.MethodDefinitions) {
+            var il = Decode(mh);
+            for (int i = 0; i < il.Count; i++) {
+                if (!(il[i].op.Name == "ldstr" && il[i].arg is string s && s == quoted)) continue;
+                string next = "?";
+                for (int j = i + 1; j < il.Count && j < i + 8; j++)
+                    if (il[j].op.Name.StartsWith("call") && il[j].arg is string c) { next = c; break; }
+                var d = md.GetMethodDefinition(mh);
+                Console.WriteLine($"   {FullName(d.GetDeclaringType())}::{md.GetString(d.Name)}  ->  {next}");
+            }
         }
     }
 
