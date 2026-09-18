@@ -3,7 +3,8 @@
 An unofficial rebuild of [Better Networking](https://github.com/CW-Jesse/valheim-betternetworking)
 by [CW_Jesse](https://github.com/CW-Jesse), updated to run on **Valheim 1.0**. Built
 against the `l-1.0.7` assemblies (network version 39) and verified against `l-1.0.12`
-(network version 40), which it has run on unmodified since that auto-update. All credit
+and `l-1.0.14` (network version 40), which it has run on unmodified through both
+auto-updates. All credit
 for the mod goes to CW_Jesse and its contributors; this repository only carries the
 changes needed to keep it working on the current game version.
 
@@ -112,7 +113,7 @@ much faster single core or fewer players.
 | Session length | 65 minutes median, 298 minutes longest |
 | Connections | every join succeeded; all disconnects were `ClosedByPeer`, i.e. players quitting |
 | Errors | zero exceptions naming the mod or Harmony, across every restart |
-| Game update | ran through `l-1.0.7` to `l-1.0.12` with no rebuild |
+| Game updates | ran through `l-1.0.7` to `l-1.0.12` and then `l-1.0.14` with no rebuild |
 | Host reboot | reloaded clean |
 
 ## What changed in 2.3.4
@@ -219,6 +220,11 @@ The `l-1.0.7` to `l-1.0.12` update is the worked example. All 59 hooked members 
 present, no signature changed, and the IL the transpilers read was identical except for
 the network version constant going from 39 to 40 — which the mod does not touch. Hence no
 rebuild, and the same DLL kept running.
+
+`l-1.0.12` to `l-1.0.14` was the same check with an even smaller answer: across every
+class the mod touches, the only change was `FejdStartup.PlayIntroCinematic` being renamed
+to `TryPlayIntroCinematic`, which the mod does not hook. Signatures and IL otherwise
+identical; the first client to connect afterwards negotiated compression both ways.
 
 Mixed mod versions are safe: two machines that disagree simply skip compression between
 them. Do not run another networking mod alongside this one; they conflict.
