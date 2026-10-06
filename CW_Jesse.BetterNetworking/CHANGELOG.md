@@ -2,7 +2,7 @@
 
 ## 2.3.5
 
-First release as Better Networking PC. Earlier versions of this fork were shared privately
+First release as Better Networking PC. PC (Steam) and dedicated servers only. Earlier versions of this fork were shared privately
 under the original name.
 
 - Renamed to Better Networking PC (`BetterNetworkingPC.dll`). The plugin ID, config file,

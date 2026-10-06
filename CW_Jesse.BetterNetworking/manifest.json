@@ -2,7 +2,7 @@
     "name": "BetterNetworking_PC",
     "version_number": "2.3.5",
     "website_url": "https://github.com/liekos47/valheim-better-networking",
-    "description": "Unofficial fork of Better Networking by CW_Jesse for Valheim 1.0. Compression, queue size, send rate, portal ghost fix and faster portal travel. Pairs with Better Networking 2.3.x.",
+    "description": "Unofficial fork of Better Networking by CW_Jesse for Valheim 1.0, PC only. Compression, queue size, send rate, portal ghost fix and faster portal travel. Pairs with Better Networking 2.3.x.",
     "dependencies": [
         "denikson-BepInExPack_Valheim-5.4.2333"
     ]

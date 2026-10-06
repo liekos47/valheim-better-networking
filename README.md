@@ -9,6 +9,11 @@ auto-update. Credit for the original mod goes to CW_Jesse and its contributors; 
 repository carries the changes needed to keep it working on the current game version, plus
 the portal fixes described below.
 
+**PC only.** "PC" in the name is the platform: this is a BepInEx mod for the PC (Steam)
+version of Valheim and for dedicated servers. It cannot be installed on Xbox or
+PlayStation, because consoles cannot load mods. It has only been run and measured on Steam
+with crossplay off.
+
 Up to 2.3.4 this fork shipped under the original name, as `CW_Jesse.BetterNetworking.dll`.
 From 2.3.5 it is **Better Networking PC**, `BetterNetworkingPC.dll`. See
 [Compatibility with the old name](#compatibility-with-the-old-name).
