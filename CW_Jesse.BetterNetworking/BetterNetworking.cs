@@ -13,7 +13,9 @@ using Steamworks;
 
 namespace CW_Jesse.BetterNetworking {
 
-    [BepInPlugin("CW_Jesse.BetterNetworking", "Better Networking", "2.3.4")]
+    // The GUID stays CW_Jesse.BetterNetworking on purpose: BepInEx then loads only the newest of two
+    // installed copies, keeps reading the existing .cfg, and other mods' incompatibility lists still match.
+    [BepInPlugin("CW_Jesse.BetterNetworking", "Better Networking PC", "2.3.5")]
     [BepInIncompatibility("org.bepinex.plugins.network")]
     [BepInIncompatibility("be.sebastienvercammen.valheim.netcompression")]
     [BepInIncompatibility("com.github.dalayeth.Networkfix")]
@@ -30,6 +32,8 @@ namespace CW_Jesse.BetterNetworking {
         public static ConfigEntry<BN_Patch_SendRate.Options_NetworkSendRateMin> configNetworkSendRateMin;
         public static ConfigEntry<BN_Patch_SendRate.Options_NetworkSendRateMax> configNetworkSendRateMax;
         public static ConfigEntry<BN_Patch_QueueSize.Options_NetworkQueueSize> configNetworkQueueSize;
+        public static ConfigEntry<BN_Patch_PortalGhost.Options_PortalGhostFix> configPortalGhostFix;
+        public static ConfigEntry<BN_Patch_PortalTravel.Options_FastPortalTravel> configFastPortalTravel;
 
         void Awake() {
             BN_Logger.Init(base.Logger, Config);
@@ -40,6 +44,8 @@ namespace CW_Jesse.BetterNetworking {
             BN_Patch_UpdateRate.InitConfig(Config);
             BN_Patch_SendRate.InitConfig(Config);
             BN_Patch_QueueSize.InitConfig(Config);
+            BN_Patch_PortalGhost.InitConfig(Config);
+            BN_Patch_PortalTravel.InitConfig(Config);
             BN_Patch_DedicatedServer.InitConfig(Config);
 
             harmony.PatchAll();

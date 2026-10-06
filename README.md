@@ -1,12 +1,17 @@
-# Better Networking 2.3.4 (Valheim 1.0.x)
+# Better Networking PC 2.3.5 (Valheim 1.0.x)
 
-An unofficial rebuild of [Better Networking](https://github.com/CW-Jesse/valheim-betternetworking)
+`valheim-better-networking-pc` is an unofficial fork of
+[Better Networking](https://github.com/CW-Jesse/valheim-betternetworking)
 by [CW_Jesse](https://github.com/CW-Jesse), updated to run on **Valheim 1.0**. Built
-against the `l-1.0.7` assemblies (network version 39) and verified against `l-1.0.12`
-and `l-1.0.14` (network version 40), which it has run on unmodified through both
-auto-updates. All credit
-for the mod goes to CW_Jesse and its contributors; this repository only carries the
-changes needed to keep it working on the current game version.
+against the `l-1.0.7` assemblies (network version 39) and verified against `l-1.0.12`,
+`l-1.0.14` and `l-1.0.16` (network version 40), which it has run on through each
+auto-update. Credit for the original mod goes to CW_Jesse and its contributors; this
+repository carries the changes needed to keep it working on the current game version, plus
+the portal fixes described below.
+
+Up to 2.3.4 this fork shipped under the original name, as `CW_Jesse.BetterNetworking.dll`.
+From 2.3.5 it is **Better Networking PC**, `BetterNetworkingPC.dll`. See
+[Compatibility with the old name](#compatibility-with-the-old-name).
 
 No official build claims 1.0 support: upstream 2.3.2 targets 0.217.28, and the 2.3.3 fork
 targets 0.221.4.
@@ -116,6 +121,36 @@ much faster single core or fewer players.
 | Game updates | ran through `l-1.0.7` to `l-1.0.12` and then `l-1.0.14` with no rebuild |
 | Host reboot | reloaded clean |
 
+## What changed in 2.3.5
+
+* **Steamworks packets are compressed once.** The old patch recompressed the whole send
+  queue on every send attempt. A packet Steam refused stays in that queue, so the retry
+  compressed it a second time and the receiver got a corrupt packet. Compression now
+  happens when a packet is queued in `ZSteamSocket.Send`. The same fault and the same fix
+  are described by [SimplifyDave's fork](https://github.com/LabodiDavid/BetterNetworking10).
+* **Portal ghost fix** (server or host, on by default, `Portal Ghost Fix`). Valheim 1.0
+  changed `ZDO.InternalSetPosition` to update the sector before it stores the new position,
+  while `ZDOPeer.ZDOSectorInvalidated` tests the stored position. The server therefore
+  checks the place an object just left, so a player standing at a portal is never told that
+  whoever walked through it has gone, and keeps a ghost of them. 0.217 stored the position
+  first and did not have this. The fix holds the invalidation back until the position is
+  stored, so the vanilla check sees the right place. It applies to every object, not only
+  players, and works for players without the mod.
+* **Fast portal travel** (client, on by default, `Fast Portal Travel`). Vanilla keeps a
+  player on the loading screen for 8 seconds after a portal however quickly the destination
+  arrives. Now the client reports its new position on arrival instead of up to 2 seconds
+  later and sends a marker that the server echoes. A world-data package under 2048 bytes
+  after the echo means the server had nothing more to send (`ZDOMan.SendZDOs` never cuts a
+  package short below that), as does a second of silence, and the 8 second floor is
+  dropped. Vanilla's own check that the destination is loaded still applies. It needs
+  2.3.5 on both the server and the travelling player; otherwise portals behave as in
+  vanilla. A host already holds the whole world, so its own floor is dropped outright.
+* **Wire format unchanged** (compression protocol version 6), so 2.3.5 pairs with 2.3.4 and
+  with official 2.3.x releases; server and clients can update separately.
+* **Hooks verified against `l-1.0.16`** with `tools/HookCheck`: nothing missing.
+* The two portal changes have been checked against the game's IL and shown to apply as
+  Harmony patches, but have not yet been measured in play.
+
 ## What changed in 2.3.4
 
 * **Rebuilt against the Valheim 1.0.7 assemblies** (BepInExPack 5.4.2333).
@@ -135,9 +170,10 @@ much faster single core or fewer players.
 
 1. Install [BepInExPack for Valheim](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/)
    5.4.2333 or later.
-2. Copy `CW_Jesse.BetterNetworking.dll` from the [latest release](../../releases/latest)
+2. Copy `BetterNetworkingPC.dll` from the [latest release](../../releases/latest)
    into `BepInEx/plugins`, on the server and on each player's game.
-3. Restart the server. Config changes are read at startup, so dedicated servers need a
+3. Delete the old `CW_Jesse.BetterNetworking.dll` if it is there.
+4. Restart the server. Config changes are read at startup, so dedicated servers need a
    restart to pick them up.
 
 The DLL is self-contained: ZstdSharp and the compression dictionary are embedded. To
@@ -147,15 +183,30 @@ It works on the game client as well as a dedicated server. On a client, `LogOutp
 confirms it loaded and that compression negotiated with the server:
 
 ```
-[Info   :   BepInEx] Loading [Better Networking 2.3.4]
-[Message:Better Networking] Steamworks: k_ESteamNetworkingConfig_SendRateMin: 153600 -> 262144
-[Message:Better Networking] Steamworks: k_ESteamNetworkingConfig_SendRateMax: 153600 -> 1048576
-[Message:Better Networking] Compression: Compression to [server]: True
-[Message:Better Networking] Compression: Compression from [server]: True
+[Info   :   BepInEx] Loading [Better Networking PC 2.3.5]
+[Message:Better Networking PC] Steamworks: k_ESteamNetworkingConfig_SendRateMin: 153600 -> 262144
+[Message:Better Networking PC] Steamworks: k_ESteamNetworkingConfig_SendRateMax: 153600 -> 1048576
+[Message:Better Networking PC] Compression: Compression to [server]: True
+[Message:Better Networking PC] Compression: Compression from [server]: True
 ```
 
 Defaults are queue 32 KB, send rate 256 KB/s minimum and 1024 KB/s maximum, compression on.
 Config lives at `BepInEx/config/CW_Jesse.BetterNetworking.cfg`.
+
+### Compatibility with the old name
+
+Only the visible name and the file name changed. The plugin ID is still
+`CW_Jesse.BetterNetworking`, and so are the network message names and the compression
+protocol (version 6). That gives three guarantees:
+
+* **Mixed versions play together.** A player on 2.3.4 or an official 2.3.x release under
+  the old name still negotiates compression with a 2.3.5 server, and the other way round.
+  They only miss fast portal travel, which needs 2.3.5 on both ends.
+* **Settings carry over.** The config file keeps its name, so nothing has to be set again.
+* **Leaving the old file behind is harmless.** If both DLLs are in `BepInEx/plugins`,
+  BepInEx sees one plugin ID twice, loads the newer version and logs
+  `Skipping [Better Networking 2.3.4] because a newer version exists`. Deleting the old
+  file just keeps the log clean.
 
 ## Building
 
@@ -177,7 +228,7 @@ That directory is gitignored. Then:
 dotnet build CW_Jesse.BetterNetworking/CW_Jesse.BetterNetworking.csproj -c Release
 ```
 
-The output is `CW_Jesse.BetterNetworking/bin/Release/net472/CW_Jesse.BetterNetworking.dll`.
+The output is `CW_Jesse.BetterNetworking/bin/Release/net472/BetterNetworkingPC.dll`.
 Builds are not byte-reproducible across different source paths, so a local build will not
 match the release checksum.
 

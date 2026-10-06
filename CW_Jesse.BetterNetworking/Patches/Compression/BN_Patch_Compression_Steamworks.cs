@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 
 using HarmonyLib;
 using static CW_Jesse.BetterNetworking.BN_Patch_Compression;
@@ -13,15 +11,16 @@ namespace CW_Jesse.BetterNetworking {
         private const int k_nSteamNetworkingSend_Reliable = 8;                       // https://partner.steamgames.com/doc/api/steamnetworkingtypes
         private const int k_cbMaxSteamNetworkingSocketsMessageSizeSend = 512 * 1024; // https://partner.steamgames.com/doc/api/steamnetworkingtypes
 
-        [HarmonyPatch(typeof(ZSteamSocket), "SendQueuedPackages")]
+        // compress as the package is queued, not in SendQueuedPackages: a package Steam fails to send stays in the queue and would be compressed again on the next attempt
+        [HarmonyPatch(typeof(ZSteamSocket), nameof(ZSteamSocket.Send), new Type[] { typeof(ZPackage) })]
         [HarmonyPrefix]
-        private static bool Steamworks_SendCompressedPackages(ref ZSteamSocket __instance, ref Queue<Byte[]> ___m_sendQueue) {
-            if (!__instance.IsConnected()) return false;
-            if (!CompressionStatus.GetSendCompressionStarted(__instance)) return true;
+        private static void Steamworks_SendCompressedPackage(ref ZSteamSocket __instance, ref ZPackage pkg) {
+            if (pkg == null || pkg.Size() == 0) return;
+            if (!__instance.IsConnected()) return;
+            if (!CompressionStatus.GetSendCompressionStarted(__instance)) return;
 
-            ___m_sendQueue = new Queue<byte[]>(___m_sendQueue.Select(p => Compress(p)));
-            return true;
-         }
+            pkg = new ZPackage(Compress(pkg.GetArray()));
+        }
 
         [HarmonyPatch(typeof(ZSteamSocket), nameof(ZSteamSocket.Recv))]
         [HarmonyPostfix]

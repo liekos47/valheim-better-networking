@@ -2,13 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <Title>Better Networking</Title>
+    <AssemblyName>BetterNetworkingPC</AssemblyName>
+    <RootNamespace>CW_Jesse.BetterNetworking</RootNamespace>
+    <Title>Better Networking PC</Title>
     <Copyright>CW_Jesse 2023</Copyright>
     <Company>CW_Jesse</Company>
     <RepositoryUrl>https://github.com/CW-Jesse/valheim-betternetworking</RepositoryUrl>
-    <Version>2.3.4</Version>
-    <AssemblyVersion>2.3.4</AssemblyVersion>
-    <FileVersion>2.3.4</FileVersion>
+    <Version>2.3.5</Version>
+    <AssemblyVersion>2.3.5</AssemblyVersion>
+    <FileVersion>2.3.5</FileVersion>
     <PackageProjectUrl>https://valheim.thunderstore.io/package/CW_Jesse/BetterNetworking_Valheim/</PackageProjectUrl>
   </PropertyGroup>
 

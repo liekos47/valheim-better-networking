@@ -100,13 +100,15 @@ string[] methods = {
     "ZNet.GetPeers", "ZNet.IsServer",
     "FejdStartup.ParseServerArguments",
     "ZDOMan.AddPeer", "ZDOMan.RPC_ZDOData", "ZDOMan.SendZDOToPeers2",
-    "ZSteamSocket.GetSendQueueSize", "ZSteamSocket.RegisterGlobalCallbacks", "ZSteamSocket.SendQueuedPackages",
+    "ZSteamSocket.GetSendQueueSize", "ZSteamSocket.RegisterGlobalCallbacks", "ZSteamSocket.Send", "ZPackage.Size",
     "ZSteamSocket.Recv", "ZSteamSocket.IsConnected", "ZSteamSocket.Flush", "ZSteamSocket.GetHostName",
     "ZPlayFabSocket.GetSendQueueSize", "ZPlayFabSocket.Dispose", "ZPlayFabSocket.LateUpdate", "ZPlayFabSocket..ctor",
     "PlayFabZLibWorkQueue.DoCompress", "PlayFabZLibWorkQueue.DoUncompress",
     "PlayFabZLibWorkQueue.UncompressOnThisThread", "PlayFabZLibWorkQueue.Execute",
     "ZPlayFabMatchmaking.LookupPublicIP",
     "ZRpc.Register", "ZRpc.Invoke", "ZPackage..ctor", "ZPackage.GetArray",
+    "ZDO.InternalSetPosition", "ZDOMan.ZDOSectorInvalidated",
+    "Player.UpdateTeleport", "ZNet.SendServerSyncPlayerData", "ZNet.SetReferencePosition", "ZNet.GetServerPeer",
 };
 foreach (var m in methods) valheim.PrintMethods(m);
 foreach (var m in new[] { "Steamworks.SteamNetworkingUtils.SetConfigValue", "Steamworks.SteamNetworkingUtils.GetConfigValue",
@@ -115,11 +117,12 @@ foreach (var m in new[] { "Steamworks.SteamNetworkingUtils.SetConfigValue", "Ste
 
 Console.WriteLine("\n== Fields injected or reflected (type: field) ==");
 string[] fields = {
-    "ZNet.m_onlineBackend", "ZSteamSocket.m_sendQueue", "ZPlayFabSocket.m_inFlightQueue", "ZPlayFabSocket.m_zlibWorkQueue",
+    "ZNet.m_onlineBackend", "ZPlayFabSocket.m_inFlightQueue", "ZPlayFabSocket.m_zlibWorkQueue",
     "ZPlayFabSocket/InFlightQueue.Bytes", "PlayFabZLibWorkQueue.m_inCompress", "PlayFabZLibWorkQueue.m_outCompress",
     "PlayFabZLibWorkQueue.m_inDecompress", "PlayFabZLibWorkQueue.m_outDecompress",
     "PlayFabZLibWorkQueue.s_workersMutex", "PlayFabZLibWorkQueue.s_workers",
     "ZNetPeer.m_rpc", "ZNetPeer.m_socket", "ZNetPeer.m_server", "ZNetPeer.m_playerName",
+    "Player.m_localPlayer", "Player.m_teleporting", "Player.m_distantTeleport", "Player.m_teleportTimer", "Player.m_teleportTargetPos",
 };
 foreach (var f in fields) valheim.PrintField(f);
 
@@ -127,6 +130,9 @@ Console.WriteLine("\n== IL facts the patches depend on ==");
 valheim.PrintIl("ZNet.IsDedicated", "IsDedicated transpiler looks for ldc.i4.1 (true on the dedicated build)");
 valheim.PrintIl("ZNet.RPC_PeerInfo", "Player limit transpiler replaces ldc.i4.s 10", onlyConstants: true);
 valheim.PrintIl("ZSteamSocket.RegisterGlobalCallbacks", "Vanilla Steam send-rate config (mod overrides after this runs)", onlyConstants: true);
+valheim.PrintIl("Player.UpdateTeleport", "Portal travel transpiler replaces the single ldc.r4 8; arrival is ldc.r4 2", onlyConstants: true);
+valheim.PrintIl("ZDOMan.SendZDOs", "Portal travel reads a package under 2048 bytes as 'nothing left to send'", onlyConstants: true);
+valheim.PrintIl("ZDO.InternalSetPosition", "Portal ghost: SetSector before stfld m_position is the Valheim 1.0 fault the fix works around");
 valheim.PrintCallers("GetSendQueueSize");
 valheim.PrintCallers("SendZDOToPeers2");
 valheim.PrintCallers("RegisterGlobalCallbacks");
@@ -351,7 +357,7 @@ sealed class Asm {
             var il = Decode(mh);
             Console.WriteLine($"   {il.Count} instructions");
             foreach (var (off, op, arg) in il) {
-                bool isConst = op.Name.StartsWith("ldc.i4");
+                bool isConst = op.Name.StartsWith("ldc.i4") || op.Name == "ldc.r4";
                 bool isCall = op.Name.StartsWith("call") || op.Name == "newobj";
                 if (onlyConstants && !isConst && !(isCall && arg is string s && (s.Contains("SetConfigValue") || s.Contains("Player")))) continue;
                 Console.WriteLine($"   IL_{off:X4} {op.Name} {arg}");
