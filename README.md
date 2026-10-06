@@ -1,5 +1,7 @@
 # Better Networking PC 2.3.5 (Valheim 1.0.x)
 
+[![Support me on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20the%20mod-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/liekos47)
+
 `valheim-better-networking-pc` is an unofficial fork of
 [Better Networking](https://github.com/CW-Jesse/valheim-betternetworking)
 by [CW_Jesse](https://github.com/CW-Jesse), updated to run on **Valheim 1.0**. Built
